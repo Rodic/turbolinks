@@ -129,7 +129,7 @@ replace = (html, options = {}) ->
   triggerEvent EVENTS.LOAD, loadedNodes
 
 changePage = (doc, options) ->
-  [extractedTitle, targetBody, csrfToken] = extractTitleAndBody(doc)
+  [extractedLang, extractedTitle, targetBody, csrfToken] = extractLangTitleAndBody(doc)
   title = options.title ? extractedTitle
   currentBody = document.body
 
@@ -141,6 +141,8 @@ changePage = (doc, options) ->
 
   triggerEvent EVENTS.BEFORE_UNLOAD, nodesToChange
   document.title = title if title isnt false
+  if extractedLang
+    document.documentElement.setAttribute('lang', extractedLang)
 
   if options.change
     changedNodes = swapNodes(targetBody, nodesToChange, keep: false)
@@ -313,9 +315,10 @@ processResponse = ->
     if doc and !assetsChanged doc
       return doc
 
-extractTitleAndBody = (doc) ->
+extractLangTitleAndBody = (doc) ->
   title = doc.querySelector 'title'
-  [ title?.textContent, doc.querySelector('body'), CSRFToken.get(doc).token ]
+  lang  = doc.getAttribute 'lang'
+  [ lang, title?.textContent, doc.querySelector('body'), CSRFToken.get(doc).token ]
 
 CSRFToken =
   get: (doc = document) ->
@@ -331,6 +334,9 @@ createDocument = (html) ->
   if /<(html|body)/i.test(html)
     doc = document.documentElement.cloneNode()
     doc.innerHTML = html
+    lang = /<html\s.*lang=["'](.+)["']>/i.exec(html)
+    if lang
+      doc.setAttribute('lang', lang[1]);
   else
     doc = document.documentElement.cloneNode(true)
     doc.querySelector('body').innerHTML = html
